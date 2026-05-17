@@ -95,6 +95,11 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
           <li>
             <NavLink
               to="/Reels"
+              onClick={() =>
+                navigate("/Reels", {
+                  state: { refresh: location.pathname === "/Reels" },
+                })
+              }
               className={({ isActive }) =>
                 `nav-link p-1 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
               }
