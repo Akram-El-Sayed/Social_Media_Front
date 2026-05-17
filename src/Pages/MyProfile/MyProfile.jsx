@@ -65,8 +65,6 @@ export default function MyProfile({ theme }) {
           },
         );
 
-        console.log(data);
-
         if (!cursor) {
           setUserP(data.user);
           setPosts(data.posts);
