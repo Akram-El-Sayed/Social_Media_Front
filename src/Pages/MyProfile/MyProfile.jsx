@@ -12,44 +12,25 @@ import {
 } from "react-bootstrap";
 import { useSocket } from "../../Hooks/useSocket";
 import { api } from "../../utils/api";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setUser } from "../../Store/UserSlice/UserSlice";
+import { updateFeedUserAvatar } from "../../Store/feedSlice/feedSlice";
 import { Loading } from "../../Components/Loading/Loading";
 import ProfilePostCard from "../../Components/ProfilePostsCard/ProfilePostCard";
 import {
-  FiArrowLeft,
   FiUser,
-  FiGlobe,
-  FiUsers,
-  FiLock,
-  FiHeart,
-  FiMessageCircle,
   FiEdit2,
 } from "react-icons/fi";
+import AvatarImg from "../../Components/AvatarImage/AvatarImg";
 
-function Avatar({ src, size = 96 }) {
-  return src ? (
-    <img
-      src={src}
-      alt="avatar"
-      className="up-avatar"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <div
-      className="up-avatar-placeholder"
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
-    >
-      ◈
-    </div>
-  );
-}
 
-export default function MyProfile({theme}) {
+
+export default function MyProfile({ theme }) {
   const navigate = useNavigate();
   const { socket } = useSocket();
   const { userInfo } = useSelector((state) => state.user);
 
-  const [user, setUser] = useState(null);
+  const [userp, setUserP] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -66,37 +47,44 @@ export default function MyProfile({theme}) {
 
   const loaderRef = useRef(null);
   const fileInputRef = useRef(null);
+  const dispatch = useDispatch();
 
-  const fetchProfile = useCallback(async (cursor = null) => {
-    try {
-      if (!cursor) setLoading(true);
-      else setPostsLoading(true);
+  const fetchProfile = useCallback(
+    async (cursor = null) => {
+      try {
+        if (!cursor) setLoading(true);
+        else setPostsLoading(true);
 
-      const params = { limit: 9 };
-      if (cursor) params.cursor = cursor;
+        const params = { limit: 9 };
+        if (cursor) params.cursor = cursor;
 
-      const { data } = await api.get(`/api/posts/user/${userInfo._id}/posts`, {
-        params,
-      });
+        const { data } = await api.get(
+          `/api/posts/user/${userInfo._id}/posts`,
+          {
+            params,
+          },
+        );
 
-      console.log(data);
+        console.log(data);
 
-      if (!cursor) {
-        setUser(data.user);
-        setPosts(data.posts);
-      } else {
-        setPosts((prev) => [...prev, ...data.posts]);
+        if (!cursor) {
+          setUserP(data.user);
+          setPosts(data.posts);
+        } else {
+          setPosts((prev) => [...prev, ...data.posts]);
+        }
+
+        setNextCursor(data.pagination.nextCursor);
+        setHasNextPage(data.pagination.hasNextPage);
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      } finally {
+        setLoading(false);
+        setPostsLoading(false);
       }
-
-      setNextCursor(data.pagination.nextCursor);
-      setHasNextPage(data.pagination.hasNextPage);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message);
-    } finally {
-      setLoading(false);
-      setPostsLoading(false);
-    }
-  }, [userInfo?._id]);
+    },
+    [userInfo?._id],
+  );
 
   useEffect(() => {
     fetchProfile();
@@ -120,9 +108,9 @@ export default function MyProfile({theme}) {
   useEffect(() => {
     if (!socket) return;
     const handleFollowers = ({ followersCount }) =>
-      setUser((u) => (u ? { ...u, followersCount } : u));
+      setUserP((u) => (u ? { ...u, followersCount } : u));
     const handleFollowing = ({ followingCount }) =>
-      setUser((u) => (u ? { ...u, followingCount } : u));
+      setUserP((u) => (u ? { ...u, followingCount } : u));
     socket.on("followers_count_updated", handleFollowers);
     socket.on("following_count_updated", handleFollowing);
     return () => {
@@ -132,7 +120,7 @@ export default function MyProfile({theme}) {
   }, [socket]);
 
   const openEdit = () => {
-    setEditBio(user?.bio || "");
+    setEditBio(userp?.bio || "");
     setEditFile(null);
     setEditPreview(null);
     setSaveError(null);
@@ -158,7 +146,17 @@ export default function MyProfile({theme}) {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setUser(data.user);
+      setUserP(data.user);
+
+      dispatch(setUser(data.user));
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      dispatch(
+        updateFeedUserAvatar({
+          userId: data.user._id,
+          profilePicture: data.user.profilePicture,
+        }),
+      );
       setEditOpen(false);
     } catch (err) {
       setSaveError(err.response?.data?.message || err.message);
@@ -182,25 +180,25 @@ export default function MyProfile({theme}) {
         <div className="py-5 border-bottom border-secondary">
           <Container>
             <div className="d-flex flex-column align-items-center gap-3 text-center ">
-              <img src={user?.profilePicture}  className=' profile-avatar ' />
+              <AvatarImg src={userp?.profilePicture} alt={userp?.username} className="profile-avatar" />
 
               <div>
                 <h1 className="h3 fw-semibold text-light mb-1">
-                  @{user?.username}
+                  @{userp?.username}
                 </h1>
                 <p className="text-secondary small mb-0">
-                  {user?.bio || <em>No bio yet.</em>}
+                  {userp?.bio || <em>No bio yet.</em>}
                 </p>
               </div>
 
               {/* Stats */}
               <div className="d-flex align-items-center gap-4">
                 <Link
-                  to={`/followers/${user?._id}`}
+                  to={`/followers/${userp?._id}`}
                   className="text-decoration-none text-center"
                 >
                   <div className="text-warning fw-semibold fs-5">
-                    {user?.followersCount ?? 0}
+                    {userp?.followersCount ?? 0}
                   </div>
                   <div
                     className="text-secondary text-uppercase"
@@ -214,11 +212,11 @@ export default function MyProfile({theme}) {
                   style={{ height: 32 }}
                 />
                 <Link
-                  to={`/following/${user?._id}`}
+                  to={`/following/${userp?._id}`}
                   className="text-decoration-none text-center"
                 >
                   <div className="text-warning fw-semibold fs-5">
-                    {user?.followingCount ?? 0}
+                    {userp?.followingCount ?? 0}
                   </div>
                   <div
                     className="text-secondary text-uppercase"
@@ -282,7 +280,12 @@ export default function MyProfile({theme}) {
                     onClick={() => navigate(`/post/${post._id}`)}
                     style={{ cursor: "pointer" }}
                   >
-                    <ProfilePostCard post={post} user={userInfo} theme={theme} index={i} />
+                    <ProfilePostCard
+                      post={post}
+                      user={userInfo}
+                      theme={theme}
+                      index={i}
+                    />
                   </div>
                 </Col>
               ))}
@@ -301,24 +304,32 @@ export default function MyProfile({theme}) {
         </Container>
 
         {/* ── Edit Modal ── */}
-        <Modal
-          show={editOpen}
-          onHide={() => setEditOpen(false)}
-          centered
-          
-        >
+        <Modal show={editOpen} onHide={() => setEditOpen(false)} centered>
           <Modal.Header closeButton className="border-secondary">
             <Modal.Title className="fw-semibold fs-5">Edit Profile</Modal.Title>
           </Modal.Header>
 
-          <Modal.Body >
+          <Modal.Body>
             {/* Avatar picker */}
             <div
               className="position-relative mx-auto mb-4"
               style={{ width: 80, cursor: "pointer" }}
               onClick={() => fileInputRef.current?.click()}
             >
-              <img src={editPreview || user?.profilePicture} className="edite-profile-avatar" />
+              {editPreview || userp?.profilePicture ? (
+                <img
+                  src={editPreview || userp?.profilePicture}
+                  alt="avatar"
+                  className="edite-profile-avatar"
+                />
+              ) : (
+                <div
+                  className="edite-profile-avatar d-flex align-items-center justify-content-center"
+                  style={{ background: "var(--color-background-secondary)" }}
+                >
+                  <FiUser size={28} className="text-secondary" />
+                </div>
+              )}
               <div className="avatar-change-overlay rounded-circle position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center ms-2">
                 <small className=" text-primary">Change</small>
               </div>
