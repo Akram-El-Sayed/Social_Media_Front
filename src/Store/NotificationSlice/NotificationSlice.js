@@ -4,6 +4,7 @@ const notificationSlice = createSlice({
   name: "notification",
   initialState: {
     unreadCount: 0,
+    activeConversationId: null,
   },
   reducers: {
     setUnreadCount: (state, action) => {
@@ -12,6 +13,10 @@ const notificationSlice = createSlice({
     incrementUnread: (state) => {
       state.unreadCount += 1;
     },
+
+    setActiveConversation: (state, action) => {   
+    state.activeConversationId = action.payload;
+  },
    
     decrementUnread: (state) => {
       state.unreadCount = Math.max(0, state.unreadCount - 1);
@@ -22,7 +27,7 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { setUnreadCount, incrementUnread, decrementUnread, clearUnread } =
+export const { setUnreadCount, incrementUnread, decrementUnread, clearUnread , setActiveConversation } =
   notificationSlice.actions;
 
 export default notificationSlice.reducer;
