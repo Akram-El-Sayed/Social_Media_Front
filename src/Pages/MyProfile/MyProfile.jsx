@@ -15,6 +15,7 @@ import { api } from "../../utils/api";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser } from "../../Store/UserSlice/UserSlice";
 import { updateFeedUserAvatar } from "../../Store/feedSlice/feedSlice";
+import { updateReelsUserAvatar } from "../../Store/reelsSlice/reelsSlice";
 import { Loading } from "../../Components/Loading/Loading";
 import ProfilePostCard from "../../Components/ProfilePostsCard/ProfilePostCard";
 import { FiUser, FiEdit2 } from "react-icons/fi";
@@ -173,6 +174,8 @@ useEffect(() => {
           profilePicture: data.user.profilePicture,
         }),
       );
+
+      dispatch(updateReelsUserAvatar({ userId: data.user._id, profilePicture: data.user.profilePicture }));
       setEditOpen(false);
     } catch (err) {
       setSaveError(err.response?.data?.message || err.message);
