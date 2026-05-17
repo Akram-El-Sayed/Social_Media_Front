@@ -7,12 +7,13 @@ import { api } from "../../utils/api";
 import { RiLogoutCircleLine } from "react-icons/ri";
 
 
-export const LogoutButton = () => {
+export const LogoutButton = ({ onClick }) => {
   const go = useNavigate()
   // dispatch
   const dispatch = useDispatch();
 
  async function handleLogout() {
+    onClick?.();
     await api.post('/api/auth/logout');
     // Clear Info Redux
     dispatch(clearUser());
