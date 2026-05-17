@@ -7,10 +7,12 @@ import { api } from "../../utils/api";
 import { usePostRoom } from "../../Hooks/usePostRoom";
 import CommentRow from "../CommentRow/CommentRow";
 import { useNavigate } from "react-router-dom";
+import AvatarImg from "../AvatarImage/AvatarImg";
+import { useSelector } from "react-redux";
 
 export default function CommentModal({
   post,
-  currentUser,
+  currentUser: currentUserProp,
   onClose,
   onLike,
   onShare,
@@ -39,6 +41,8 @@ export default function CommentModal({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const reduxUser = useSelector((state) => state.user.userInfo);
+  const currentUser = reduxUser || currentUserProp;
 
   const inputRef = useRef(null);
   const commentsEndRef = useRef(null);
@@ -241,13 +245,7 @@ export default function CommentModal({
       {/* Left: comments panel */}
       <div className="cm-left">
         <div className="cm-post-header">
-          <img
-            src={post.user?.profilePicture || "/default-avatar.png"}
-            alt={post.user?.username}
-            className="cm-avatar"
-            onClick={() => navigate(`/profile/${post.user?._id}`)}
-            style={{ cursor: "pointer" }}
-          />
+          <AvatarImg src={post.user?.profilePicture} alt={post.user?.username} className="cm-avatar" onClick={() => navigate(`/profile/${post.user?._id}`)} style={{ cursor: "pointer" }} />
           <strong
             className="small"
             onClick={() => navigate(`/profile/${post.user?._id}`)}
@@ -338,11 +336,7 @@ export default function CommentModal({
 
         {/* Input */}
         <Form className="cm-input-row" onSubmit={handleSubmit}>
-          <img
-            src={currentUser?.profilePicture || "/default-avatar.png"}
-            alt="me"
-            className="cm-comment-avatar"
-          />
+         <AvatarImg src={currentUser?.profilePicture} alt="me" className="cm-comment-avatar" />
           <Form.Control
             ref={inputRef}
             type="text"
