@@ -15,6 +15,8 @@ import { useNavigate } from "react-router-dom";
 import ReactionUsersModal from "../ReactionUsersModal/ReactionUsersModal";
 import { REACTIONS, typeToEmoji } from "../../utils/TypeToEmoji/TypeToEmoji";
 import { useOnlineUsers } from "../../Hooks/useOnlineUsers";
+import { useDispatch } from "react-redux";
+import { setActiveConversation } from "../../Store/NotificationSlice/NotificationSlice";
 
 /* Helpers */
 const getOther = (conv, currentUser) => {
@@ -260,7 +262,7 @@ export default function MessagePanel({
   const [activeMsgId, setActiveMsgId] = useState(null);
   const [reactionModal, setReactionModal] = useState(null);
   const [peerTyping, setPeerTyping] = useState(false);
-
+  const dispatch = useDispatch();
   const bottomRef = useRef(null);
   const prevMsgLengthRef = useRef(0);
   const holdTimerRef = useRef(null);
@@ -298,6 +300,12 @@ export default function MessagePanel({
   const cancelHold = useCallback(() => {
     clearHoldTimer();
   }, [clearHoldTimer]);
+
+  useEffect(() => {
+  if (!conversation._id) return;
+  dispatch(setActiveConversation(conversation._id.toString()));
+  return () => dispatch(setActiveConversation(null));   
+}, [conversation._id, dispatch]);
 
   useEffect(() => {
     currentUserIdRef.current = currentUser?._id?.toString();
