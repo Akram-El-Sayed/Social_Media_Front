@@ -48,6 +48,11 @@ export default function BottomNav() {
           <li>
             <NavLink
               to="/Reels"
+              onClick={() =>
+                navigate("/Reels", {
+                  state: { refresh: location.pathname === "/Reels" },
+                })
+              }
               className={({ isActive }) =>
                 `nav-link py-2 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
               }
