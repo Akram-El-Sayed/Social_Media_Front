@@ -10,6 +10,7 @@ import Caption from "../Caption/Caption";
 import ShareToMessageModal from "../ShareToMessageModal/ShareToMessageModal";
 import AvatarImg from "../AvatarImage/AvatarImg";
 import { updateFeedFollowState } from "../../Store/feedSlice/feedSlice";
+import { updateReelsFollowState } from "../../Store/reelsSlice/reelsSlice";
 import { useDispatch } from "react-redux";
 
 
@@ -132,6 +133,7 @@ const PostCard = ({ post, currentUser, onDelete, theme }) => {
     // Optimistic update — button disappears immediately on follow
     setIsFollowing(true);
     dispatch(updateFeedFollowState({ userId: post.user?._id, isFollowing: true }));
+    dispatch(updateReelsFollowState({ userId: post.user?._id, isFollowing: true }));
     try {
       await api.post(`/api/users/${post.user?._id}/follow`);
     } catch (err) {
