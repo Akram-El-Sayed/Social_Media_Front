@@ -29,7 +29,8 @@ import ReportPost from "./Pages/ReportPost/ReportPost";
 import EditPost from "./Pages/EditPost/EditPost";
 import Conversations from "./Pages/Conversations/Conversations";
 import ScrollToTop from "./Components/ScrollToUp/ScrollToUp";
-import { OnlineProvider } from "./context/OnlineContext";
+import { OnlineProvider } from "./Context/OnlineContext";
+import { Store } from "./Store/Store";
 
 function App() {
   const { isLoggedIn, role, userInfo } = useSelector((state) => state.user);
@@ -95,6 +96,10 @@ function App() {
 
         const convId = (msg.conversation?._id ?? msg.conversation)?.toString();
         const msgId = msg._id?.toString();
+
+        // skip notification if user is actively reading this conversation
+        const activeConvId = Store.getState().notification.activeConversationId;
+        if (activeConvId && activeConvId === convId) return;
 
         if (msgId && convId) {
           sock.emit("message_received", {
