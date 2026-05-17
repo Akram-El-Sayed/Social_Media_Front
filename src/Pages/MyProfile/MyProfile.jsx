@@ -17,13 +17,8 @@ import { setUser } from "../../Store/UserSlice/UserSlice";
 import { updateFeedUserAvatar } from "../../Store/feedSlice/feedSlice";
 import { Loading } from "../../Components/Loading/Loading";
 import ProfilePostCard from "../../Components/ProfilePostsCard/ProfilePostCard";
-import {
-  FiUser,
-  FiEdit2,
-} from "react-icons/fi";
+import { FiUser, FiEdit2 } from "react-icons/fi";
 import AvatarImg from "../../Components/AvatarImage/AvatarImg";
-
-
 
 export default function MyProfile({ theme }) {
   const navigate = useNavigate();
@@ -49,58 +44,81 @@ export default function MyProfile({ theme }) {
   const fileInputRef = useRef(null);
   const dispatch = useDispatch();
 
-  const fetchProfile = useCallback(
-    async (cursor = null) => {
-      try {
-        if (!cursor) setLoading(true);
-        else setPostsLoading(true);
+  const postsLoadingRef = useRef(postsLoading);
+  const hasNextPageRef = useRef(hasNextPage);
+  const nextCursorRef = useRef(nextCursor);
 
-        const params = { limit: 9 };
-        if (cursor) params.cursor = cursor;
+  // Keep refs updated
+  useEffect(() => {
+    postsLoadingRef.current = postsLoading;
+  }, [postsLoading]);
+  useEffect(() => {
+    hasNextPageRef.current = hasNextPage;
+  }, [hasNextPage]);
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
 
-        const { data } = await api.get(
-          `/api/posts/user/${userInfo._id}/posts`,
-          {
-            params,
-          },
-        );
+ const fetchProfile = useCallback(
+  async (cursor = null) => {
+    // Guard clause: stop if already loading
+    if (postsLoadingRef.current || (cursor && !hasNextPageRef.current)) return;
 
-        if (!cursor) {
-          setUserP(data.user);
-          setPosts(data.posts);
-        } else {
-          setPosts((prev) => [...prev, ...data.posts]);
-        }
+    try {
+      if (!cursor) setLoading(true);
+      else setPostsLoading(true); 
 
-        setNextCursor(data.pagination.nextCursor);
-        setHasNextPage(data.pagination.hasNextPage);
-      } catch (err) {
-        setError(err.response?.data?.message || err.message);
-      } finally {
-        setLoading(false);
-        setPostsLoading(false);
+      const params = { limit: 9 };
+      if (cursor) params.cursor = cursor;
+
+      const { data } = await api.get(
+        `/api/posts/user/${userInfo._id}/posts`,
+        { params },
+      );
+
+      if (!cursor) {
+        setUserP(data.user);
+        setPosts(data.posts);
+      } else {
+        setPosts((prev) => [...prev, ...data.posts]);
       }
-    },
-    [userInfo?._id],
-  );
+
+      setNextCursor(data.pagination.nextCursor);
+      setHasNextPage(data.pagination.hasNextPage);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+      setPostsLoading(false);
+    }
+  },
+  [userInfo?._id],
+);
 
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
   // Infinite scroll
-  useEffect(() => {
-    if (!loaderRef.current) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !postsLoading)
-          fetchProfile(nextCursor);
-      },
-      { threshold: 0.1 },
-    );
-    obs.observe(loaderRef.current);
-    return () => obs.disconnect();
-  }, [hasNextPage, postsLoading, nextCursor, fetchProfile]);
+useEffect(() => {
+  if (loading || !loaderRef.current) return;
+
+  const obs = new IntersectionObserver(
+    ([entry]) => {
+      if (
+        entry.isIntersecting && 
+        hasNextPageRef.current && 
+        !postsLoadingRef.current
+      ) {
+        fetchProfile(nextCursorRef.current);
+      }
+    },
+    { threshold: 0.1 },
+  );
+
+  obs.observe(loaderRef.current);
+  return () => obs.disconnect();
+}, [fetchProfile, loading]); 
 
   // Socket: live count updates
   useEffect(() => {
@@ -178,7 +196,11 @@ export default function MyProfile({ theme }) {
         <div className="py-5 border-bottom border-secondary">
           <Container>
             <div className="d-flex flex-column align-items-center gap-3 text-center ">
-              <AvatarImg src={userp?.profilePicture} alt={userp?.username} className="profile-avatar" />
+              <AvatarImg
+                src={userp?.profilePicture}
+                alt={userp?.username}
+                className="profile-avatar"
+              />
 
               <div>
                 <h1 className="h3 fw-semibold text-light mb-1">
