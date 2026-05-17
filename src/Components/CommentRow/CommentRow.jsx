@@ -1,14 +1,15 @@
 import React from 'react'
 import { FaRegHeart, FaHeart } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
+import AvatarImg from '../AvatarImage/AvatarImg';
 
 export default function CommentRow({ comment, onReply, onLike, isReply = false }) {
   const navigate = useNavigate();
 
   return (
     <div className={`cm-comment${isReply ? " cm-comment--reply" : ""}`}>
-      <img
-        src={comment.user?.profilePicture || "/default-avatar.png"}
+     <AvatarImg
+        src={comment.user?.profilePicture}
         alt={comment.user?.username}
         className="cm-comment-avatar"
         onClick={() => navigate(`/profile/${comment.user?._id}`)}
