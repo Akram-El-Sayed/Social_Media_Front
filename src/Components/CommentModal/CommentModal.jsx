@@ -8,8 +8,8 @@ import { usePostRoom } from "../../Hooks/usePostRoom";
 import CommentRow from "../CommentRow/CommentRow";
 import { useNavigate } from "react-router-dom";
 import AvatarImg from "../AvatarImage/AvatarImg";
-import { useSelector } from "react-redux";
-
+import { useSelector, useDispatch } from "react-redux";
+import { updatePost } from "../../Store/feedSlice/feedSlice";
 export default function CommentModal({
   post,
   currentUser: currentUserProp,
@@ -43,7 +43,7 @@ export default function CommentModal({
   const [replyingTo, setReplyingTo] = useState(null);
   const reduxUser = useSelector((state) => state.user.userInfo);
   const currentUser = reduxUser || currentUserProp;
-
+  const dispatch = useDispatch();
   const inputRef = useRef(null);
   const commentsEndRef = useRef(null);
   // Map of comment _id => DOM element ref
@@ -211,6 +211,10 @@ export default function CommentModal({
           commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
       }
+      dispatch(updatePost({
+      postId: post._id,
+      commentsCount: (post.commentsCount || 0) + 1,
+    }));
       setNewComment("");
     } catch (err) {
       console.error(err);
