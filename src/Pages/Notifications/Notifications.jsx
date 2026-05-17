@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { api } from "../../utils/api";
 import { useSocket } from "../../Hooks/useSocket";
 // Add setUnreadCount to your import
@@ -11,6 +11,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const { socket, isConnected } = useSocket();
+  const { userInfo } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -130,18 +131,21 @@ export default function Notifications() {
     [navigate, dispatch],
   );
 
-  const typeLabel = (type) => {
-    const labels = {
-      like: "liked your post",
-      comment: "commented on your post",
-      comment_like: "liked your comment",
-      comment_reply: "replied to your comment",
-      follow: "started following you",
-      message: "sent you a message",
-      share: "shared your post",
-    };
-    return labels[type] || type;
+  const typeLabel = (n) => {
+  const labels = {
+    like: "liked your post",
+    comment: "commented on your post",
+    comment_like: "liked your comment",
+    comment_reply: "replied to your comment",
+    follow: "started following you",
+    message: "sent you a message",
+    // check if YOU own the post that was shared
+    share: n.post?.user?._id?.toString() === userInfo?._id?.toString()
+      ? "shared your post"
+      : "shared a post with you",
   };
+  return labels[n.type] || n.type;
+};
 
   const hasUnread = notifications.some((n) => !n.read);
 
@@ -207,7 +211,7 @@ export default function Notifications() {
               />
               <div className="flex-grow-1">
                 <span className="fw-bold">{n.sender?.username}</span>{" "}
-                <span className="text-secondary">{typeLabel(n.type)}</span>
+               <span className="text-secondary">{typeLabel(n)}</span>
                 <div className="text-muted small">
                   {new Date(n.createdAt).toLocaleDateString()}
                 </div>
