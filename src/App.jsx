@@ -152,7 +152,7 @@ function App() {
 
           <main className="main">
             <Routes>
-              <Route path="/" element={<Home theme={theme} />} />
+              <Route path="/" element={!isLoggedIn ? <Navigate to="/login" /> : <Home theme={theme} />} />
               <Route path="/register" element={<Register />} />
               <Route path="/login" element={<Login />} />
               <Route path="/Verify-Otp" element={<VerifyOtp theme={theme} />} />
