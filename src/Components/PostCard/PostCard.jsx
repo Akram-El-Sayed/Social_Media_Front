@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, memo, useCallback } from "react";
-import { FiMoreHorizontal, FiEdit2, FiTrash2, FiFlag } from "react-icons/fi";
+import { FiMoreHorizontal, FiEdit2, FiTrash2, FiFlag, FiUser } from "react-icons/fi";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Card, Carousel, Dropdown, Spinner, Button } from "react-bootstrap";
 import { api } from "../../utils/api";
@@ -8,10 +8,15 @@ import { usePostRoom } from "../../Hooks/usePostRoom";
 import Actions from "../Actions/Actions";
 import Caption from "../Caption/Caption";
 import ShareToMessageModal from "../ShareToMessageModal/ShareToMessageModal";
+import AvatarImg from "../AvatarImage/AvatarImg";
+import { updateFeedFollowState } from "../../Store/feedSlice/feedSlice";
+import { useDispatch } from "react-redux";
+
 
 const PostCard = ({ post, currentUser, onDelete, theme }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   
   const [liked, setLiked] = useState(post.isLikedByMe || false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
@@ -126,6 +131,7 @@ const PostCard = ({ post, currentUser, onDelete, theme }) => {
     setFollowLoading(true);
     // Optimistic update — button disappears immediately on follow
     setIsFollowing(true);
+    dispatch(updateFeedFollowState({ userId: post.user?._id, isFollowing: true }));
     try {
       await api.post(`/api/users/${post.user?._id}/follow`);
     } catch (err) {
@@ -135,7 +141,7 @@ const PostCard = ({ post, currentUser, onDelete, theme }) => {
     } finally {
       setFollowLoading(false);
     }
-  }, [followLoading, post.user?._id]);
+  }, [followLoading, post.user?._id, dispatch]);
   
 
   const media = post.media ?? [];
@@ -145,7 +151,7 @@ const PostCard = ({ post, currentUser, onDelete, theme }) => {
       <Card className="post-card bg-body-secondary rounded-4" style={{ contain: "content", willChange: "transform" }}>
         <div className="post-card__header">
           <Link to={`/profile/${post.user?._id}`} className="post-card__user">
-            <img src={post.user?.profilePicture || "/default-avatar.png"} alt={post.user?.username} className="post-card__avatar" loading="lazy" />
+            <AvatarImg src={post.user?.profilePicture} alt={post.user?.username} className="post-card__avatar" />
             <span className="post-card__username">{post.user?.username}</span>
           </Link>
 
