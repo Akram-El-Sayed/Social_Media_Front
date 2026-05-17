@@ -19,7 +19,7 @@ export const LogoutButton = () => {
    
     // Clear Info LocalStorage
     localStorage.removeItem("user");
-    go("/")
+    go("/login")
     // Message
     toast.success("User Logout Successfully!");
   }
