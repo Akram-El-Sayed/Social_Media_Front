@@ -1,11 +1,11 @@
-import React, { useEffect, memo } from "react";
+import React, { useEffect, memo, useState } from "react";
 import {
   Navbar as BootstrapNavbar,
   Button,
   Container,
   Nav,
 } from "react-bootstrap";
-import { MdOutlineLightMode, MdDarkMode } from "react-icons/md";
+import { MdOutlineLightMode, MdDarkMode , MdReportGmailerrorred, } from "react-icons/md";
 import { Link, NavLink } from "react-router-dom";
 import { LogoutButton } from "../LogoutButton/LogoutButton";
 import { IoMdNotificationsOutline } from "react-icons/io";
@@ -18,11 +18,13 @@ import { useSocket } from "../../Hooks/useSocket";
 const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
   const dispatch = useDispatch();
   const { socket } = useSocket();
-
+  const [expanded, setExpanded] = useState(false);
   const unreadCount = useSelector((state) => state.notification.unreadCount);
   const serverUnreadCount = useSelector(
-    (state) => state.user.userInfo?.unreadNotificationsCount
+    (state) => state.user.userInfo?.unreadNotificationsCount,
   );
+
+  const closeNav = () => setExpanded(false);
 
   // Sync initial count from server user object
   useEffect(() => {
@@ -41,14 +43,14 @@ const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
     return () => socket.off("notification_badge_updated", handler);
   }, [socket, dispatch]);
 
-  
-
   return (
     <div className="upper-nav">
       <BootstrapNavbar
         expand="md"
         bg={theme}
         data-bs-theme={theme}
+        expanded={expanded}
+        onToggle={(val) => setExpanded(val)}
         className="nav-border rounded-bottom-4 rounded-top-3"
       >
         <Container>
@@ -58,6 +60,7 @@ const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
 
           <NavLink
             to="/Notifications"
+            onClick={closeNav}
             className={({ isActive }) =>
               `nav-link p-3 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
             }
@@ -77,13 +80,18 @@ const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
           <BootstrapNavbar.Collapse className="ms-3">
             <Nav className="ms-auto d-flex flex-row justify-content-around align-items-center gap-2">
               {role === "admin" && (
-                <Nav.Link as={NavLink} to="/admin-Report" className="font4">
-                  Reports
-                </Nav.Link>
+                <NavLink
+                  to="/admin-Report"
+                  onClick={closeNav}
+                  className='font4 p-3 border-bottom rounded-4'
+                >
+                  <MdReportGmailerrorred className="fs-2" />
+                </NavLink>
               )}
               <Nav.Link
                 as={NavLink}
                 to="/Users-Search"
+                onClick={closeNav}
                 className="font4 p-3 border-bottom rounded-4"
               >
                 <TbUserSearch className="fs-2" />
@@ -91,13 +99,14 @@ const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
 
               <div className="border-bottom rounded-4">
                 {isLoggedIn ? (
-                  <LogoutButton />
+                  <LogoutButton onClick={closeNav} />
                 ) : (
                   <Button
                     variant="outline-primary"
                     className="py-2 fs-2 border-0 rounded-4 button-nav top-nav"
                     as={Link}
                     to="/login"
+                    onClick={closeNav}
                   >
                     <RiLoginCircleLine />
                   </Button>
@@ -108,9 +117,10 @@ const Navbar = memo(({ theme, isLoggedIn, setTheme, role }) => {
                 <Button
                   variant="outline-primary"
                   className="py-2 fs-2 border-0 rounded-4 button-nav toggle-nav"
-                  onClick={() =>
-                    setTheme((prev) => (prev === "light" ? "dark" : "light"))
-                  }
+                  onClick={() => {
+                    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+                    closeNav();
+                  }}
                 >
                   {theme === "light" ? <MdDarkMode /> : <MdOutlineLightMode />}
                 </Button>
