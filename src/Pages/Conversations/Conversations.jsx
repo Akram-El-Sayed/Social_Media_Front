@@ -5,32 +5,47 @@ import { useSocket } from "../../Hooks/useSocket";
 import ConversationList from "../../Components/ConversationList/ConversationList";
 import MessagePanel from "../../Components/MessagePanel/MessagePanel";
 import { useSelector } from "react-redux";
+import { 
+  decrementUnreadMessages, 
+  setActiveConversation 
+} from "../../Store/NotificationSlice/NotificationSlice";
+import { useDispatch } from "react-redux";
 
 export default function Conversations() {
   const [conversations, setConversations] = useState([]);
-  const [activeConv, setActiveConv]       = useState(null);
-  const [loading, setLoading]             = useState(true);
-  const [showPanel, setShowPanel]         = useState(false);
-  const { socket, isConnected }           = useSocket();
-  const location                          = useLocation();
-  const navigate                          = useNavigate();
-  const processedId                       = useRef(null);
-  const { userInfo }                      = useSelector((state) => state.user);
-  const currentUser                       = userInfo;
+  const [activeConv, setActiveConv] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showPanel, setShowPanel] = useState(false);
+  const { socket, isConnected } = useSocket();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const processedId = useRef(null);
+  const processedSocketMsgIds = useRef(new Set());
+  const { userInfo } = useSelector((state) => state.user);
+  const currentUser = userInfo;
 
-  
   const activeConvIdRef = useRef(null);
   useEffect(() => {
     activeConvIdRef.current = activeConv?._id?.toString() ?? null;
   }, [activeConv?._id]);
 
-  const handleSelect = useCallback((conv) => {
-    setActiveConv(conv);
-    setShowPanel(true);
-    setConversations((prev) =>
-      prev.map((conversation) => (conversation._id === conv._id ? { ...conversation, unreadCount: 0 } : conversation))
-    );
-  }, []);
+ const handleSelect = useCallback((conv) => {
+  setActiveConv(conv);
+  setShowPanel(true);
+
+  dispatch(setActiveConversation(conv._id));
+  setConversations((prev) =>
+    prev.map((c) =>
+      c._id === conv._id ? { ...c, unreadCount: 0 } : c,
+    ),
+  );
+
+  
+  if (conv.unreadCount > 0) {
+    dispatch(decrementUnreadMessages(conv.unreadCount));
+  }
+}, [dispatch]);   
 
   // Initial load
   useEffect(() => {
@@ -58,19 +73,20 @@ export default function Conversations() {
 
     const existing = conversations.find((conv) =>
       conv.participants.some(
-        (participant) => participant._id?.toString() === startUser._id?.toString()
-      )
+        (participant) =>
+          participant._id?.toString() === startUser._id?.toString(),
+      ),
     );
 
     if (existing) {
       handleSelect(existing);
     } else {
       setActiveConv({
-        _id:          null,
+        _id: null,
         participants: [currentUser, startUser],
-        lastMessage:  null,
-        unreadCount:  0,
-        isGhost:      true,
+        lastMessage: null,
+        unreadCount: 0,
+        isGhost: true,
       });
       setShowPanel(true);
     }
@@ -89,19 +105,32 @@ export default function Conversations() {
     if (!socket || !isConnected) return;
 
     const onNewMessage = (msg) => {
+     const msgId = msg._id?.toString();
+      if (msgId) {
+        if (processedSocketMsgIds.current.has(msgId)) return;
+        processedSocketMsgIds.current.add(msgId);
+      }
+
       const convId = (msg.conversation?._id ?? msg.conversation)?.toString();
+      
+      const isOwnMessage =
+        msg.sender?._id?.toString() === currentUser?._id?.toString() ||
+        msg.sender?.toString() === currentUser?._id?.toString();
 
       setConversations((prev) => {
         const exists = prev.some((c) => c._id?.toString() === convId);
 
-      
         if (!exists) {
           const stub = {
             _id: convId,
             participants: [
               currentUser,
               msg.sender?._id
-                ? { _id: msg.sender._id, username: msg.sender.username, profilePicture: msg.sender.profilePicture }
+                ? {
+                    _id: msg.sender._id,
+                    username: msg.sender.username,
+                    profilePicture: msg.sender.profilePicture,
+                  }
                 : { _id: convId },
             ],
             lastMessage: msg,
@@ -111,43 +140,59 @@ export default function Conversations() {
           return [stub, ...prev];
         }
 
-      
         const updated = prev.map((conversation) => {
           if (conversation._id?.toString() !== convId) return conversation;
           const isOpen = activeConvIdRef.current === convId;
+
+          const newUnreadCount = isOpen 
+            ? 0 
+            : isOwnMessage 
+              ? (conversation.unreadCount || 0) 
+              : (conversation.unreadCount || 0) + 1;
+
           return {
             ...conversation,
             lastMessage: msg,
-            updatedAt:   new Date().toISOString(),
-            unreadCount: isOpen ? 0 : (conversation.unreadCount || 0) + 1,
+            updatedAt: new Date().toISOString(),
+            unreadCount: newUnreadCount,
           };
         });
 
         return [...updated].sort(
-          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
         );
       });
     };
 
     socket.on("message:new", onNewMessage);
     return () => socket.off("message:new", onNewMessage);
-    
   }, [socket, isConnected, currentUser]);
 
   const handleBack = () => {
     setShowPanel(false);
     setActiveConv(null);
+    dispatch(setActiveConversation(null));
   };
+
+  useEffect(() => {
+    return () => {
+      dispatch(setActiveConversation(null));
+    };
+  }, [dispatch]);
 
   const handleGhostResolved = useCallback((realConv) => {
     setActiveConv(realConv);
     setConversations((prev) => {
-      const exists = prev.some((conversation) => conversation._id === realConv._id);
+      const exists = prev.some(
+        (conversation) => conversation._id === realConv._id,
+      );
       const updated = exists
-        ? prev.map((conversation) => (conversation._id === realConv._id ? realConv : conversation))
+        ? prev.map((conversation) =>
+            conversation._id === realConv._id ? realConv : conversation,
+          )
         : [realConv, ...prev];
       return updated.sort(
-        (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+        (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt),
       );
     });
   }, []);
@@ -159,15 +204,17 @@ export default function Conversations() {
         ...prev.map((conversation) =>
           conversation._id === convId
             ? { ...conversation, lastMessage: msg, updatedAt: msg.createdAt }
-            : conversation
+            : conversation,
         ),
-      ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
     );
   }, []);
 
   return (
     <div className="chat-page">
-      <div className={`chat-sidebar${showPanel ? " chat-sidebar--hidden" : ""}`}>
+      <div
+        className={`chat-sidebar${showPanel ? " chat-sidebar--hidden" : ""}`}
+      >
         <ConversationList
           conversations={conversations}
           activeConv={activeConv}
