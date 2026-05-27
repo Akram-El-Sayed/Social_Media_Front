@@ -16,8 +16,10 @@ import {
   MdReportGmailerrorred,
 } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { setUnreadCount } from "../../Store/NotificationSlice/NotificationSlice";
 import { useSocket } from "../../Hooks/useSocket";
+import {
+  setUnreadCount,
+} from "../../Store/NotificationSlice/NotificationSlice";
 
 const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
   const dispatch = useDispatch();
@@ -26,6 +28,9 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
   const location = useLocation();
 
   const unreadCount = useSelector((state) => state.notification.unreadCount);
+  const unreadMessagesCount = useSelector(
+    (state) => state.notification.unreadMessagesCount,
+  );
   const serverUnreadCount = useSelector(
     (state) => state.user.userInfo?.unreadNotificationsCount,
   );
@@ -114,7 +119,15 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
                 `nav-link p-1 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
               }
             >
-              <LuMessageCircleMore />
+              {/* ← NEW: badge wrapper identical to the notification bell */}
+              <span className="sidebar-notif-wrapper">
+                <LuMessageCircleMore />
+                {unreadMessagesCount > 0 && (
+                  <span className="sidebar-notif-badge">
+                    {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                  </span>
+                )}
+              </span>
             </NavLink>
           </li>
           <li>
