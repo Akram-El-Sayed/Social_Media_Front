@@ -29,7 +29,7 @@ import ReportPost from "./Pages/ReportPost/ReportPost";
 import EditPost from "./Pages/EditPost/EditPost";
 import Conversations from "./Pages/Conversations/Conversations";
 import ScrollToTop from "./Components/ScrollToUp/ScrollToUp";
-import { OnlineProvider } from "./context/OnlineContext";
+import { OnlineProvider } from "./Context/OnlineContext";
 import { Store } from "./Store/Store";
 import {
   setUnreadMessagesCount,   
