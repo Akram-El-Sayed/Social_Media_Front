@@ -13,10 +13,14 @@ import { LogoutButton } from "../LogoutButton/LogoutButton";
 import { Button } from "react-bootstrap";
 import { MdOutlineLightMode } from "react-icons/md";
 import { MdDarkMode } from "react-icons/md";
+import { useSelector } from "react-redux";
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const unreadMessagesCount = useSelector(
+    (state) => state.notification.unreadMessagesCount,
+  );
 
   const handleHomeClick = (e) => {
     e.preventDefault();
@@ -85,12 +89,16 @@ export default function BottomNav() {
               className={({ isActive }) =>
                 `nav-link py-2 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
               }
-              data-bs-toggle="tooltip"
-              data-bs-placement="right"
               aria-label="Conversations"
-              data-bs-original-title="Conversations"
             >
-              <LuMessageCircleMore />
+              <span className="sidebar-notif-wrapper">
+                <LuMessageCircleMore />
+                {unreadMessagesCount > 0 && (
+                  <span className="sidebar-notif-badge">
+                    {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                  </span>
+                )}
+              </span>
             </NavLink>
           </li>
           <li className="nav-item">
