@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../../utils/api";
 import { useSocket } from "../../Hooks/useSocket";
-// Add setUnreadCount to your import
-import { decrementUnread, clearUnread, setUnreadCount } from "../../Store/NotificationSlice/NotificationSlice";
+import {
+  decrementUnread,
+  clearUnread,
+  setUnreadCount,
+} from "../../Store/NotificationSlice/NotificationSlice";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -19,7 +22,8 @@ export default function Notifications() {
     const fetchNotifications = async () => {
       try {
         const { data } = await api.get("/api/notifications");
-        setNotifications(data.notifications || []);
+        const nonMessageNotifs = (data.notifications || []).filter(n => n.type !== "message");
+        setNotifications(nonMessageNotifs);
       } catch (err) {
         console.error("Failed to fetch notifications", err);
       } finally {
@@ -34,6 +38,7 @@ export default function Notifications() {
     if (!socket || !isConnected) return;
 
     const handler = (notification) => {
+      if (notification.type === "message") return;
       setNotifications((prev) => [{ ...notification, read: false }, ...prev]);
     };
 
@@ -41,32 +46,34 @@ export default function Notifications() {
     return () => socket.off("notification:new", handler);
   }, [socket, isConnected]);
 
-  // ── Mark ALL as read
- const handleMarkAllRead = useCallback(async () => {
-  const hasUnread = notifications.some((n) => !n.read);
-  if (!hasUnread || markingAll) return;
+  // Mark ALL as read
+  const handleMarkAllRead = useCallback(async () => {
+    const hasUnread = notifications.some((n) => !n.read);
+    if (!hasUnread || markingAll) return;
 
-  // Snapshot BEFORE optimistic update — so rollback is exact
-  const previousNotifications = notifications;
-  const previousUnreadCount = previousNotifications.filter((n) => !n.read).length;
+    // Snapshot BEFORE optimistic update  so rollback is exact
+    const previousNotifications = notifications;
+    const previousUnreadCount = previousNotifications.filter(
+      (n) => !n.read,
+    ).length;
 
-  // Optimistic update
-  setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  dispatch(clearUnread());
-  setMarkingAll(true);
+    // Optimistic update
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    dispatch(clearUnread());
+    setMarkingAll(true);
 
-  try {
-    await api.patch("/api/notifications/read");
-    // Server confirms → optimistic state is already correct, nothing to do
-  } catch (err) {
-    console.error("Failed to mark all as read", err);
-    // Restore exactly what was there before — not a blanket read: false
-    setNotifications(previousNotifications);
-    dispatch(setUnreadCount(previousUnreadCount));
-  } finally {
-    setMarkingAll(false);
-  }
-}, [notifications, markingAll, dispatch]);
+    try {
+      await api.patch("/api/notifications/read");
+      // Server confirms => optimistic state is already correct, nothing to do
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+      // Restore exactly what was there before  not a blanket read: false
+      setNotifications(previousNotifications);
+      dispatch(setUnreadCount(previousUnreadCount));
+    } finally {
+      setMarkingAll(false);
+    }
+  }, [notifications, markingAll, dispatch]);
 
   // Mark a single notification as read then navigate
   const handleClick = useCallback(
@@ -106,18 +113,26 @@ export default function Notifications() {
           break;
         case "comment":
           if (n.post?._id)
-            navigate(`/post/${n.post._id}`, { state: { openCommentModal: true } });
+            navigate(`/post/${n.post._id}`, {
+              state: { openCommentModal: true },
+            });
           break;
         case "comment_reply":
           if (n.post?._id)
             navigate(`/post/${n.post._id}`, {
-              state: { openCommentModal: true, scrollToCommentId: n.comment?._id },
+              state: {
+                openCommentModal: true,
+                scrollToCommentId: n.comment?._id,
+              },
             });
           break;
         case "comment_like":
           if (n.post?._id)
             navigate(`/post/${n.post._id}`, {
-              state: { openCommentModal: true, highlightCommentId: n.comment?._id },
+              state: {
+                openCommentModal: true,
+                highlightCommentId: n.comment?._id,
+              },
             });
           break;
         case "follow":
@@ -132,20 +147,21 @@ export default function Notifications() {
   );
 
   const typeLabel = (n) => {
-  const labels = {
-    like: "liked your post",
-    comment: "commented on your post",
-    comment_like: "liked your comment",
-    comment_reply: "replied to your comment",
-    follow: "started following you",
-    message: "sent you a message",
-    // check if YOU own the post that was shared
-    share: n.post?.user?._id?.toString() === userInfo?._id?.toString()
-      ? "shared your post"
-      : "shared a post with you",
+    const labels = {
+      like: "liked your post",
+      comment: "commented on your post",
+      comment_like: "liked your comment",
+      comment_reply: "replied to your comment",
+      follow: "started following you",
+      message: "sent you a message",
+      // check if YOU own the post that was shared
+      share:
+        n.post?.user?._id?.toString() === userInfo?._id?.toString()
+          ? "shared your post"
+          : "shared a post with you",
+    };
+    return labels[n.type] || n.type;
   };
-  return labels[n.type] || n.type;
-};
 
   const hasUnread = notifications.some((n) => !n.read);
 
@@ -211,7 +227,7 @@ export default function Notifications() {
               />
               <div className="flex-grow-1">
                 <span className="fw-bold">{n.sender?.username}</span>{" "}
-               <span className="text-secondary">{typeLabel(n)}</span>
+                <span className="text-secondary">{typeLabel(n)}</span>
                 <div className="text-muted small">
                   {new Date(n.createdAt).toLocaleDateString()}
                 </div>
@@ -219,7 +235,12 @@ export default function Notifications() {
               {!n.read && (
                 <span
                   className="ms-2 rounded-circle bg-warning"
-                  style={{ width: 10, height: 10, flexShrink: 0, display: "inline-block" }}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    flexShrink: 0,
+                    display: "inline-block",
+                  }}
                 />
               )}
               {n.post?.media?.[0] && (
