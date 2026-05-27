@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Home from "./Pages/Home/Home";
 import Register from "./Pages/Register/Register";
@@ -29,8 +29,12 @@ import ReportPost from "./Pages/ReportPost/ReportPost";
 import EditPost from "./Pages/EditPost/EditPost";
 import Conversations from "./Pages/Conversations/Conversations";
 import ScrollToTop from "./Components/ScrollToUp/ScrollToUp";
-import { OnlineProvider } from "./context/OnlineContext";
+import { OnlineProvider } from "./Context/OnlineContext";
 import { Store } from "./Store/Store";
+import {
+  setUnreadMessagesCount,   
+  incrementUnreadMessages,  
+} from "./Store/NotificationSlice/NotificationSlice";
 
 function App() {
   const { isLoggedIn, role, userInfo } = useSelector((state) => state.user);
@@ -40,6 +44,8 @@ function App() {
   });
 
   const dispatch = useDispatch();
+
+  const processedMsgIds = useRef(new Set());
 
   // ── Auth check on mount
   useEffect(() => {
@@ -65,59 +71,74 @@ function App() {
     checkAuth();
   }, [dispatch]);
 
-  useEffect(() => {
-    if (isCheckingAuth) return;
+ 
+useEffect(() => {
+  if (isCheckingAuth) return;
 
-    if (isLoggedIn) {
-      const sock = connectSocket();
+  if (isLoggedIn) {
+    const sock = connectSocket();
 
-      const markAllDelivered = async () => {
-        try {
-          const { data } = await api.get("/api/messages/conversations");
-          const ids = (data.conversations || []).map((c) => c._id);
-          if (ids.length) {
-            await api.patch("/api/messages/conversations/delivered-bulk", {
-              conversationIds: ids,
-            });
-          }
-        } catch (err) {
-          console.error("bulk-delivered error:", err);
+    // Seed unread message count from conversations 
+    const initConversations = async () => {
+      try {
+        const { data } = await api.get("/api/messages/conversations");
+        const ids = (data.conversations || []).map((c) => c._id);
+
+        // bulk-mark delivered (unchanged)
+        if (ids.length) {
+          await api.patch("/api/messages/conversations/delivered-bulk", {
+            conversationIds: ids,
+          });
         }
-      };
-      markAllDelivered();
 
-      const handleNewMessage = (msg) => {
-        if (!sock) return;
+        
+        const totalUnread = (data.conversations || []).reduce(
+          (sum, c) => sum + (c.unreadCount || 0),
+          0,
+        );
+        dispatch(setUnreadMessagesCount(totalUnread));   
+      } catch (err) {
+        console.error("initConversations error:", err);
+      }
+    };
+    initConversations();
+
+    // message:new 
+    const handleNewMessage = (msg) => {
+      if (!sock) return;
+
+      const msgId = msg._id?.toString();
+        if (msgId) {
+          if (processedMsgIds.current.has(msgId)) return;
+          processedMsgIds.current.add(msgId);
+        }
 
         const senderId = msg.sender?._id?.toString() ?? msg.sender?.toString();
         if (senderId && userInfo?._id && senderId === userInfo._id.toString()) {
-          return;
+          return; // ignore own messages
         }
 
         const convId = (msg.conversation?._id ?? msg.conversation)?.toString();
-        const msgId = msg._id?.toString();
-
-        // skip notification if user is actively reading this conversation
         const activeConvId = Store.getState().notification.activeConversationId;
+
+        // If we are currently in this conversation, do nothing
         if (activeConvId && activeConvId === convId) return;
 
         if (msgId && convId) {
-          sock.emit("message_received", {
-            messageId: msgId,
-            conversationId: convId,
-          });
+          sock.emit("message_received", { messageId: msgId, conversationId: convId });
         }
+
+        dispatch(incrementUnreadMessages());
       };
 
       sock.on("message:new", handleNewMessage);
-
       return () => {
         sock.off("message:new", handleNewMessage);
       };
     } else {
       disconnectSocket();
     }
-  }, [isLoggedIn, isCheckingAuth, userInfo?._id]);
+  }, [isLoggedIn, isCheckingAuth, userInfo?._id, dispatch]);
 
   // Theme persistence
   useEffect(() => {
