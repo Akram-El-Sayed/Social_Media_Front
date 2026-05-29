@@ -14,12 +14,15 @@ const emitChange = () => {
 export const connectSocket = () => {
   if (socket) return socket;
 
+  const token = localStorage.getItem("token"); 
+
   socket = io(SOCKET_URL, {
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,
+    auth: { token },
   });
 
   // Attach status listeners
