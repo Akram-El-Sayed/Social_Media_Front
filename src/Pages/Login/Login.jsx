@@ -42,7 +42,9 @@ export default function Login({ theme }) {
 
       // Endpoint
       const response = await api.post("api/auth/login", data);
-      console.log(response);
+      if (response.data.token) {
+  localStorage.setItem("token", response.data.token);
+}
       const { user } = response.data;
       // Store Localstorage
     
