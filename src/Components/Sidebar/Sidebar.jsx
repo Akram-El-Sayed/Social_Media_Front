@@ -1,5 +1,4 @@
 import React, { useEffect, memo } from "react";
-import { IoShareSocialOutline } from "react-icons/io5";
 import { TbHome2, TbUserSearch } from "react-icons/tb";
 import { GoVideo } from "react-icons/go";
 import { LuMessageCircleMore } from "react-icons/lu";
@@ -19,6 +18,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../../Hooks/useSocket";
 import {
   setUnreadCount,
+  setUnreadMessagesCount,
 } from "../../Store/NotificationSlice/NotificationSlice";
 
 const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
@@ -34,15 +34,28 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
   const serverUnreadCount = useSelector(
     (state) => state.user.userInfo?.unreadNotificationsCount,
   );
+  const serverUnreadMessagesCount = useSelector(
+    (state) => state.user.userInfo?.unreadMessagesCount,
+  );
 
-  // Sync initial count from server user object
+  const CurrentUser = useSelector((state) => state.user);
+  const userInfo = CurrentUser.userInfo;
+
+  // Sync initial general-notification count from server user object
   useEffect(() => {
     if (serverUnreadCount != null) {
       dispatch(setUnreadCount(serverUnreadCount));
     }
   }, [serverUnreadCount, dispatch]);
 
-  // Keep badge in sync with real-time socket updates from any controller
+  // Sync initial messages count from server user object
+  useEffect(() => {
+    if (serverUnreadMessagesCount != null) {
+      dispatch(setUnreadMessagesCount(serverUnreadMessagesCount));
+    }
+  }, [serverUnreadMessagesCount, dispatch]);
+
+  // Keep general-notification badge in sync with real-time socket updates
   useEffect(() => {
     if (!socket) return;
     const handler = ({ unreadCount: count }) => {
@@ -52,11 +65,20 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
     return () => socket.off("notification_badge_updated", handler);
   }, [socket, dispatch]);
 
+  // Keep messages badge in sync with real-time socket updates
+  useEffect(() => {
+    if (!socket) return;
+    const handler = ({ unreadMessagesCount: count }) => {
+      dispatch(setUnreadMessagesCount(count));
+    };
+    socket.on("messages_badge_updated", handler);
+    return () => socket.off("messages_badge_updated", handler);
+  }, [socket, dispatch]);
+
   const handleHomeClick = (e) => {
     e.preventDefault();
 
     if (location.pathname === "/") {
-      // Already on Home => trigger refresh
       navigate("/", { state: { refresh: Date.now() } });
     } else {
       navigate("/");
@@ -66,11 +88,19 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
   return (
     <div className="sidebar">
       <NavLink
-        to="/"
-        className="d-flex justify-content-center fs-2 link-body-emphasis text-decoration-none brand"
+        to={`/profile/${userInfo?._id}`}
+        className="d-flex flex-column align-items-center link-body-emphasis text-decoration-none brand sidebar-user-brand"
       >
-        <IoShareSocialOutline />
-        <span className="visually-hidden">Icon-only</span>
+        {userInfo?.profilePicture ? (
+          <img
+            src={userInfo.profilePicture}
+            alt={userInfo.username}
+            className="sidebar-user-avatar"
+          />
+        ) : (
+          <FaRegUser className="sidebar-user-avatar-fallback" />
+        )}
+        <span className="sidebar-user-username">{userInfo?.username}</span>
       </NavLink>
       <div className="sidebar-footer">
         <ul className="nav nav-pills nav-flush flex-column gap-1 mb-auto text-center">
@@ -119,7 +149,6 @@ const Sidebar = memo(({ theme, isLoggedIn, setTheme, role }) => {
                 `nav-link p-1 fs-2 link-warning border-bottom rounded-4 ${isActive ? "active" : ""}`
               }
             >
-              {/* ← NEW: badge wrapper identical to the notification bell */}
               <span className="sidebar-notif-wrapper">
                 <LuMessageCircleMore />
                 {unreadMessagesCount > 0 && (
