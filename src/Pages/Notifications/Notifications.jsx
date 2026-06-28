@@ -5,6 +5,7 @@ import { api } from "../../utils/api";
 import { useSocket } from "../../Hooks/useSocket";
 import {
   decrementUnread,
+  incrementUnread,
   clearUnread,
   setUnreadCount,
 } from "../../Store/NotificationSlice/NotificationSlice";
@@ -22,7 +23,9 @@ export default function Notifications() {
     const fetchNotifications = async () => {
       try {
         const { data } = await api.get("/api/notifications");
-        const nonMessageNotifs = (data.notifications || []).filter(n => n.type !== "message");
+        const nonMessageNotifs = (data.notifications || []).filter(
+          (n) => n.type !== "message",
+        );
         setNotifications(nonMessageNotifs);
       } catch (err) {
         console.error("Failed to fetch notifications", err);
@@ -51,23 +54,19 @@ export default function Notifications() {
     const hasUnread = notifications.some((n) => !n.read);
     if (!hasUnread || markingAll) return;
 
-    // Snapshot BEFORE optimistic update  so rollback is exact
     const previousNotifications = notifications;
     const previousUnreadCount = previousNotifications.filter(
       (n) => !n.read,
     ).length;
 
-    // Optimistic update
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     dispatch(clearUnread());
     setMarkingAll(true);
 
     try {
       await api.patch("/api/notifications/read");
-      // Server confirms => optimistic state is already correct, nothing to do
     } catch (err) {
       console.error("Failed to mark all as read", err);
-      // Restore exactly what was there before  not a blanket read: false
       setNotifications(previousNotifications);
       dispatch(setUnreadCount(previousUnreadCount));
     } finally {
@@ -87,7 +86,7 @@ export default function Notifications() {
         dispatch(decrementUnread());
 
         try {
-          await api.patch(`/api/${n._id}/read`);
+         await api.patch(`/api/${n._id}/read`);
         } catch (err) {
           console.error("Failed to mark notification read", err);
           setNotifications((prev) =>
@@ -95,7 +94,7 @@ export default function Notifications() {
               item._id === n._id ? { ...item, read: false } : item,
             ),
           );
-          dispatch(decrementUnread());
+          dispatch(incrementUnread());
         }
       }
 
@@ -154,7 +153,6 @@ export default function Notifications() {
       comment_reply: "replied to your comment",
       follow: "started following you",
       message: "sent you a message",
-      // check if YOU own the post that was shared
       share:
         n.post?.user?._id?.toString() === userInfo?._id?.toString()
           ? "shared your post"
@@ -175,7 +173,6 @@ export default function Notifications() {
 
   return (
     <div className="notif-page container py-4">
-      {/* Header row */}
       <div className="d-flex align-items-center justify-content-between mb-4">
         <h5 className="notif-page__title mb-0">Notifications</h5>
         {hasUnread && (
