@@ -18,6 +18,24 @@
   border-top-right-radius: 30px;
   border-bottom-right-radius: 30px;
 }
+.sidebar-user-brand {
+  padding: 8px 0;
+}
+.sidebar-user-avatar,
+.sidebar-user-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 1.5rem;
+}
+.sidebar-user-username {
+  font-size: 0.65rem;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .sidebar-footer {
   margin: auto;
   display: flex;
@@ -179,7 +197,6 @@
 .post-card__video,
 .post-card__image {
   width: 100%;
-  /* Removed height: 100% to let content dictate size */
   max-height: 585px; 
   object-fit: contain; 
   display: block;
@@ -245,10 +262,9 @@
 }
 .post-card__caption p {
   margin: 0 0 6px;
-  /* Prevents text from pushing boundaries unexpectedly */
   display: block; 
 }
-/* --- ADDED: Performance Helper for Scrolling --- */
+/* ADDED: Performance Helper for Scrolling */
 @media (prefers-reduced-motion: no-preference) {
   .post-card {
     will-change: transform, box-shadow;
@@ -285,7 +301,7 @@
   text-decoration: underline;
 }
 
-/* ── Modal shell ── */
+/* Modal shell */
 .cm-dialog {
   max-width: 900px !important;
   margin: auto;
